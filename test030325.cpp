@@ -8,6 +8,7 @@
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <sndfile.h>
+#include <vector>
 
 constexpr float M_PI = 3.14;
 
@@ -267,7 +268,6 @@ void DrawOscilloscope() {
     }
 }
 
-/*
 ALuint loadAudio(const std::string& filePath) {
     SF_INFO fileInfo;
     SNDFILE* file = sf_open(filePath.c_str(), SFM_READ, &fileInfo);
@@ -294,7 +294,6 @@ ALuint loadAudio(const std::string& filePath) {
 
     return buffer;
 }
-*/
 
 ALuint playAudio(ALuint buffer) {
     ALuint source;
@@ -309,8 +308,6 @@ ALuint playAudio(ALuint buffer) {
 
     return source;
 }
-
-
 
 bool keyZPressed = false;
 bool keyXPressed = false;
@@ -427,20 +424,15 @@ int main() {
         return -1;
     }
 
-    // Инициализация OpenAL
-   // ALCdevice* device = alcOpenDevice(nullptr);
-   // ALCcontext* context = alcCreateContext(device, nullptr);
-   // alcMakeContextCurrent(context);
-
     // Загрузка аудиофайла
-    /*ALuint buffer = loadAudio("path/to/your/music.wav");
+    ALuint buffer = loadAudio("C:\\audio\\Cosmos (Outer Space).wav");
     if (!buffer) {
         alcDestroyContext(context);
         alcCloseDevice(device);
         return -1;
     }
 
-    // Воспроизведение музыки
+    // Добавление источника звука
     ALuint source = playAudio(buffer);
     if (!source) {
         alDeleteBuffers(1, &buffer);
@@ -449,8 +441,9 @@ int main() {
         return -1;
     }
 
+    alSourcef(source, AL_GAIN, 0.1f);
+
     std::cout << "OpenAL initialized successfully!" << std::endl;
-    */
 
     // Компиляция шейдеров
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -495,13 +488,16 @@ int main() {
 
         DrawOscilloscope();
 
-       /* ALint state;
-        alGetSourcei(source, AL_SOURCE_STATE, &state);
-        if (state != AL_PLAYING) {
-            break; // Музыка закончилась
-        }
-        */
+        // Проверка состояния музыки
+        ALint sourceState;
+        alGetSourcei(source, AL_SOURCE_STATE, &sourceState);
 
+        if (!MousePressed && sourceState != AL_PLAYING) {
+            alSourcePlay(source); // Запуск музыки, если осциллограф включен, а музыка не играет
+        }
+        if (MousePressed && sourceState == AL_PLAYING) {
+            alSourceStop(source); // Остановка музыки, если осциллограф выключен, а музыка играет
+        }
         Wave base_wave = { 0.03f, 100.0f, 0.0f };
         if (!keyZPressed && !keyXPressed && !keyCPressed) {
             DrawWave(base_wave, time);
@@ -554,8 +550,8 @@ int main() {
     }
 
     // Освобождение ресурсов
-   // alcDestroyContext(context);
-   // alcCloseDevice(device);
+    alcDestroyContext(context);
+    alcCloseDevice(device);
     glDeleteProgram(shaderProgram);
     glfwDestroyWindow(window);
     glfwTerminate();
