@@ -69,7 +69,7 @@ void DrawRect(float x1, float y1, float x2, float y2, float r, float g, float b)
         2, 3, 0
     };
 
-    unsigned int VBO, VAO, EBO;
+    GLuint VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -119,7 +119,7 @@ void DrawCircle(float x_c, float y_c, float radius, float r, float g, float b) {
         indices[i * 3 + 2] = (i + 1) % segments + 1;
     }
 
-    unsigned int VBO, VAO, EBO;
+    GLuint VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -158,13 +158,13 @@ void DrawWave(Wave wave, float time) {
     // Заполняем массив координатами волны
     for (int i = 0; i < numPoints; i++) {
         float x = -0.8f + 1.45f * i / (numPoints - 1); // X от -0.8 до 0.65
-        float y = wave.amplitude * sin(10.0f * x); // Y вычисляется по формуле синуса
+        float y = cos(7.0f) * wave.amplitude * sin(10.0f * x); // Y вычисляется по формуле синуса
         wavePoints[i * 2] = x; // X координата
         wavePoints[i * 2 + 1] = y; // Y координата
     }
 
     // Создаём VAO и VBO
-    unsigned int VAO, VBO;
+    GLuint VAO, VBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
@@ -186,7 +186,7 @@ void DrawWave(Wave wave, float time) {
     // Обновляем массив точек для волны
     for (int i = 0; i < numPoints; i++) {
         float x = -0.8f + 0.85f * i / (numPoints - 1); // X от -0.8 до 0.6
-        float y = wave.amplitude * cos(2.0f * wave.frequency * x + time * 3.0f) + 0.12f; // Y вычисляется по формуле синуса с фазой
+        float y = pow( cos( x * 7.0f + time * 2.0f ) , 2 ) * wave.amplitude * cos( 2.0f * wave.frequency * x + wave.frequency * time ) + 0.12f; // Y вычисляется по формуле синуса с фазой
         wavePoints[i * 2] = x; // X координата
         wavePoints[i * 2 + 1] = y; // Y координата
     }
@@ -206,14 +206,6 @@ void DrawWave(Wave wave, float time) {
 
     // Отвязываем VAO
     glBindVertexArray(0);
-}
-
-Wave addWaves(float time, const Wave& wave1, const Wave& wave2) {
-    Wave wave_res;
-    wave_res.amplitude = abs(wave1.amplitude - wave2.amplitude);
-    wave_res.frequency = wave1.frequency;
-    wave_res.phase = wave1.phase - wave2.phase;
-    return wave_res; 
 }
 
 Wave addBeats(float time, const Wave& wave1, const Wave& wave2) {
@@ -503,9 +495,9 @@ int main() {
             DrawWave(base_wave, time);
         }
 
-        Wave wave1 = { 0.05f, 5.0f, 0.0f }; 
-        Wave wave2 = { 0.25f, 6.0f, 0.0f }; 
-        Wave wave3 = { 0.45f, 7.0f, 0.0f };
+        Wave wave1 = { 0.05f, 21.0f, 0.0f }; 
+        Wave wave2 = { 0.25f, 42.0f, 0.0f }; 
+        Wave wave3 = { 0.45f, 63.0f, 0.0f };
 
         float wavePosition = cos(2.0f * M_PI * 1.0f * time);
         
@@ -519,10 +511,10 @@ int main() {
             DrawWave(wave3, time);
         }
         else if (keyZPressed && keyXPressed) {
-            DrawWave(addWaves(time, wave1, wave2), time);
+            DrawWave(addBeats(time, wave1, wave2), time);
         }
         else if (keyXPressed && keyCPressed) {
-            DrawWave(addWaves(time, wave2, wave3), time);
+            DrawWave(addBeats(time, wave2, wave3), time);
         }
         else if (keyZPressed && keyCPressed) {
             DrawWave(addBeats(time, wave1, wave3), time);
