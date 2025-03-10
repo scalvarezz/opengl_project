@@ -241,70 +241,79 @@ public:
         alSourcePlay(source);
         return source;
     };
+
+    void stopAudio(ALuint source) {
+        alSourceStop(source);
+    }
     void setVolume(ALuint source, float volume) {
         alSourcef(source, AL_GAIN, volume);
     };
 };
 
-class InputHandler {
-    GLFWwindow* window;
-    std::map<int, bool> keyStates;
-    bool leftMousePressed;
-    bool rightMousePressed;
+bool keyZPressed = false;
+bool keyXPressed = false;
+bool keyCPressed = false;
+bool MousePressed = true;
 
-    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-        InputHandler* handler = static_cast<InputHandler*>(glfwGetWindowUserPointer(window));
-        if (action == GLFW_PRESS) {
-            handler->keyStates[key] = true;
-        }
-        else if (action == GLFW_RELEASE) {
-            handler->keyStates[key] = false;
-        }
-    };
-    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-        InputHandler* handler = static_cast<InputHandler*>(glfwGetWindowUserPointer(window));
-        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            handler->leftMousePressed = (action == GLFW_PRESS);
-        }
-        else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-            handler->rightMousePressed = (action == GLFW_PRESS);
-        }
-    }
-public:
-    InputHandler() : window(nullptr), leftMousePressed(false), rightMousePressed(false) {}
-    InputHandler(GLFWwindow* window) : window(window), leftMousePressed(false), rightMousePressed(false) {
-        glfwSetKeyCallback(window, keyCallback);
-        glfwSetMouseButtonCallback(window, mouseButtonCallback);
-        glfwSetWindowUserPointer(window, this);
-    }
-    void update() {
-        glfwPollEvents();
-    }
-    bool isKeyPressed(int key) const {
-        return keyStates.count(key) && keyStates.at(key);
-    }
-    bool isLeftMousePressed() const {
-        return leftMousePressed;
-    }
-    bool isRightMousePressed() const {
-        return rightMousePressed;
-    }
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
 
-};
+    if (key == GLFW_KEY_Z && action == GLFW_PRESS)
+        keyZPressed = true;
+    if (key == GLFW_KEY_X && action == GLFW_PRESS)
+        keyXPressed = true;
+    if (key == GLFW_KEY_C && action == GLFW_PRESS)
+        keyCPressed = true;
+
+    if (key == GLFW_KEY_Z && action == GLFW_RELEASE)
+        keyZPressed = false;
+    if (key == GLFW_KEY_X && action == GLFW_RELEASE)
+        keyXPressed = false;
+    if (key == GLFW_KEY_C && action == GLFW_RELEASE)
+        keyCPressed = false;
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        MousePressed = false;
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+        MousePressed = true;
+}
 
 class Game {
+public:
+    Game(unsigned int width, unsigned int height)
+        : width(width), height(height), isRunning(false), isOscilloscopeOn(false) {
+        init();
+    }
+
+    ~Game() {
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
+
+    void run() {
+        auto start_time = std::chrono::high_resolution_clock::now();
+
+        while (isRunning && !glfwWindowShouldClose(window)) {
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<float>(currentTime - start_time).count();
+            update(time);
+            render();
+
+            glfwSwapBuffers(window);
+            glfwPollEvents(); // Обработка событий
+        }
+    }
+private:
     GLFWwindow* window;
     unsigned int width, height;
     unsigned int shaderProgram;
     Renderer renderer;
     AudioManager audioManager;
-    InputHandler inputHandler;
     bool isRunning;
     bool isOscilloscopeOn;
-    bool keyZPressed;
-    bool keyXPressed;
-    bool keyCPressed;
-    bool MousePressed;
     float startTime;
     int i;
     float presstime[4];
@@ -368,29 +377,17 @@ class Game {
         glDeleteShader(fragmentShader);
 
         renderer = Renderer(shaderProgram);
-        inputHandler = InputHandler(window);
 
-        ALuint buffer = audioManager.loadAudio("C:\\audio\\Cosmos(Outer_Space)_cropped.wav");
-        ALuint source = audioManager.playAudio(buffer); // сразу начинает играть при запуске
-        audioManager.setVolume(source, 0.1f);
+       // ALuint buffer = audioManager.loadAudio("C:\\audio\\Cosmos(Outer_Space)_cropped.wav");
+       // ALuint source = audioManager.playAudio(buffer); // сразу начинает играть при запуске
+       // audioManager.setVolume(source, 0.1f);
+
+        glfwSetKeyCallback(window, key_callback);
+        glfwSetMouseButtonCallback(window, mouse_button_callback);
 
         isRunning = true;
     }
-    void processInput() {
-        inputHandler.update();
 
-        if (inputHandler.isLeftMousePressed()) {
-            isOscilloscopeOn = true;
-            audioManager.playAudio(audioManager.loadAudio("C:\\audio\\Cosmos(Outer_Space)_cropped.wav"));
-            startTime = static_cast<float>(glfwGetTime());
-        }
-        if (inputHandler.isRightMousePressed()) {
-            isOscilloscopeOn = false;
-            audioManager.setVolume(audioManager.playAudio(audioManager.loadAudio("C:\\audio\\Cosmos(Outer_Space)_cropped.wav")), 0.0f); // проблема со звуком
-            startTime = -1.0f; // вероятно вырезать нахуй
-            i = 0;
-        }
-    }
     void update(float time) {
         if (startTime > 0.0f) {
             if (i < 3 && time - startTime >= presstime[i] && time - startTime <= presstime[i] + 0.5f) {
@@ -407,76 +404,62 @@ class Game {
             }
         }
     }
-    ;
+
     void render() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         renderer.DrawOscilloscope();
 
-        if (isOscilloscopeOn) {
+        // Проверка состояния музыки
+        ALint sourceState;
+        alGetSourcei(source, AL_SOURCE_STATE, &sourceState);
+
+        if (!MousePressed && sourceState != AL_PLAYING) {
+            alSourcePlay(source); // Запуск музыки, если осциллограф включен, а музыка не играет
+            startTime = time;
+        }
+        if (MousePressed && sourceState == AL_PLAYING) {
+            alSourceStop(source); // Остановка музыки, если осциллограф выключен, а музыка играет
+            startTime = -1.0f;
+            i = 0;
+        }
+
+        if (!MousePressed) {
             Wave base_wave = { 0.03f, 100.0f };
             if (!keyZPressed && !keyXPressed && !keyCPressed) {
                 renderer.DrawWave(base_wave, static_cast<float>(glfwGetTime()));
             }
-
             Wave wave1 = { 0.05f, 21.0f };
             Wave wave2 = { 0.25f, 42.0f };
             Wave wave3 = { 0.45f, 63.0f };
-
             if (keyZPressed && !keyXPressed && !keyCPressed) {
                 renderer.DrawWave(wave1, static_cast<float>(glfwGetTime()));
             }
-            else if (keyXPressed && !keyZPressed && !keyCPressed) {
+            if (keyXPressed && !keyZPressed && !keyCPressed) {
                 renderer.DrawWave(wave2, static_cast<float>(glfwGetTime()));
             }
-            else if (keyCPressed && !keyZPressed && !keyXPressed) {
+            if (keyCPressed && !keyZPressed && !keyXPressed) {
                 renderer.DrawWave(wave3, static_cast<float>(glfwGetTime()));
             }
+
             else if (keyZPressed && keyXPressed) {
-                renderer.DrawWave(wave1.addBeats(static_cast<float>(glfwGetTime()), wave1, wave2), static_cast<float>(glfwGetTime()));
+                renderer.DrawWave(wave1.addBeats(glfwGetTime(), wave1, wave2), glfwGetTime());
             }
             else if (keyXPressed && keyCPressed) {
-                renderer.DrawWave(wave2.addBeats(static_cast<float>(glfwGetTime()), wave2, wave3), static_cast<float>(glfwGetTime()));
+                renderer.DrawWave(wave2.addBeats(glfwGetTime(), wave2, wave3), glfwGetTime());
             }
             else if (keyZPressed && keyCPressed) {
-                renderer.DrawWave(wave3.addBeats(static_cast<float>(glfwGetTime()), wave1, wave3), static_cast<float>(glfwGetTime()));
+                renderer.DrawWave(wave3.addBeats(glfwGetTime(), wave1, wave3), glfwGetTime());
             }
-        }
 
-        if (MousePressed) {
+        }
+        else if(MousePressed) {
             renderer.DrawRect(-0.8f, -0.4f, 0.05f, 0.65f, 0.15f, 0.15f, 0.15f);
         }
-    };
-public:
-    Game(unsigned int width, unsigned int height)
-        : width(width), height(height), isRunning(false), isOscilloscopeOn(false),
-        keyZPressed(false), keyXPressed(false), keyCPressed(false), MousePressed(true),
-        startTime(-1.0f), i(0), presstime{ 3.0f, 5.0f, 7.0f, 500.0f }, pressbutton{ 0, 1, 20 } {
-        init();
     }
-    ~Game() {
-        glfwDestroyWindow(window);
-        glfwTerminate();
-    }
-    void run() {
-        auto start_time = std::chrono::high_resolution_clock::now();
-
-        while (isRunning && !glfwWindowShouldClose(window)) {
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            float time = std::chrono::duration<float>(currentTime - start_time).count();
-
-            processInput(); // беда
-            update(time);
-            render();
-
-            glfwSwapBuffers(window);
-            glfwPollEvents();
-        }
-    }
-
-
 };
+
 
 // Точка входа
 int main() {
