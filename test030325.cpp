@@ -30,9 +30,8 @@ bool checkOpenALError_(const char* file, int line) {
 }
 
 struct Wave {
-    float amplitude; 
-    float frequency; 
-    float phase;    
+    float amplitude;
+    float frequency;
 };
 
 enum GameState {
@@ -186,7 +185,7 @@ void DrawWave(Wave wave, float time) {
     // Обновляем массив точек для волны
     for (int i = 0; i < numPoints; i++) {
         float x = -0.8f + 0.85f * i / (numPoints - 1); // X от -0.8 до 0.6
-        float y = pow( cos( x * 7.0f + time * 2.0f ) , 2 ) * wave.amplitude * cos( 2.0f * wave.frequency * x + wave.frequency * time ) + 0.12f; // Y вычисляется по формуле синуса с фазой
+        float y = pow(cos(x * 7.0f + time * 2.0f), 2) * wave.amplitude * cos(2.0f * wave.frequency * x + wave.frequency * time) + 0.12f; // Y вычисляется по формуле синуса с фазой
         wavePoints[i * 2] = x; // X координата
         wavePoints[i * 2 + 1] = y; // Y координата
     }
@@ -210,11 +209,10 @@ void DrawWave(Wave wave, float time) {
 
 Wave addBeats(float time, const Wave& wave1, const Wave& wave2) {
     Wave wave_res;
-    float deltaOmega = wave1.frequency - wave2.frequency; 
-    float omega = (wave1.frequency + wave2.frequency); 
-    wave_res.amplitude = (wave1.amplitude + wave2.amplitude)/2.0f*cos(time);
-    wave_res.frequency = omega*cos(time)*10.0f;
-    wave_res.phase = (wave1.phase - wave2.phase);
+    float deltaOmega = wave1.frequency - wave2.frequency;
+    float omega = (wave1.frequency + wave2.frequency);
+    wave_res.amplitude = (wave1.amplitude + wave2.amplitude) / 2.0f * cos(time);
+    wave_res.frequency = omega * cos(time) * 10.0f;
     return wave_res;
 }
 
@@ -333,20 +331,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         MousePressed = true;
 }
 
-void checkInput(float wavePosition) {
-    int score = 0;
-    if (keyZPressed && wavePosition >= -0.1f && wavePosition <= 0.1f) {
-        score += 100;
-    }
-    if (keyXPressed && wavePosition >= -0.1f && wavePosition <= 0.1f) {
-        score += 100;
-    }
-    if (keyCPressed && wavePosition >= -0.1f && wavePosition <= 0.1f) {
-        score += 100;
-    }
-    //std::cout << "Score: " << score << std::endl;
-}
-
 int main() {
     // Инициализация GLFW
     if (!glfwInit()) {
@@ -417,7 +401,7 @@ int main() {
     }
 
     // Загрузка аудиофайла
-    ALuint buffer = loadAudio("C:\\audio\\Cosmos (Outer Space).wav");
+    ALuint buffer = loadAudio("C:\\audio\\Cosmos(Outer_Space).wav");
     if (!buffer) {
         alcDestroyContext(context);
         alcCloseDevice(device);
@@ -467,6 +451,11 @@ int main() {
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
+    int i = 0;
+    float presstime[4] = { 3.0f,5.0f,7.0f,500.0f};
+    int pressbutton[3] = { 0,1,20 };
+    float startTime = -1.0f;
+
     // Основной цикл
     while (!glfwWindowShouldClose(window)) {
         // Вычисляем время с начала программы
@@ -479,6 +468,18 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         DrawOscilloscope();
+        if (startTime > 0.0f) {
+            if (i < 3 && time - startTime >= presstime[i] && time - startTime <= presstime[i] + 0.5f) {
+                if (pressbutton[i] > 9) {
+                    DrawRect(-0.67f + 0.22f * (pressbutton[i] / 10), -0.75f, -0.52f + 0.22f * (pressbutton[i] / 10), -0.55f, 1.0f, 0.0f, 0.0f);
+                    DrawRect(-0.67f + 0.22f * (pressbutton[i] % 10), -0.75f, -0.52f + 0.22f * (pressbutton[i] % 10), -0.55f, 1.0f, 0.0f, 0.0f);
+                }
+                else
+                    DrawRect(-0.67f + 0.22f * pressbutton[i], -0.75f, -0.52f + 0.22f * pressbutton[i], -0.55f, 1.0f, 0.0f, 0.0f);
+            }
+            else if (time - startTime > presstime[i] + 0.5f)
+                i++;
+        }
 
         // Проверка состояния музыки
         ALint sourceState;
@@ -486,21 +487,24 @@ int main() {
 
         if (!MousePressed && sourceState != AL_PLAYING) {
             alSourcePlay(source); // Запуск музыки, если осциллограф включен, а музыка не играет
+            startTime = time;
         }
         if (MousePressed && sourceState == AL_PLAYING) {
             alSourceStop(source); // Остановка музыки, если осциллограф выключен, а музыка играет
+            startTime = -1.0f;
+            i = 0;
         }
-        Wave base_wave = { 0.03f, 100.0f, 0.0f };
+        Wave base_wave = { 0.03f, 100.0f};
         if (!keyZPressed && !keyXPressed && !keyCPressed) {
             DrawWave(base_wave, time);
         }
 
-        Wave wave1 = { 0.05f, 21.0f, 0.0f }; 
-        Wave wave2 = { 0.25f, 42.0f, 0.0f }; 
-        Wave wave3 = { 0.45f, 63.0f, 0.0f };
+        Wave wave1 = { 0.05f, 21.0f};
+        Wave wave2 = { 0.25f, 42.0f};
+        Wave wave3 = { 0.45f, 63.0f};
 
         float wavePosition = cos(2.0f * M_PI * 1.0f * time);
-        
+
         if (keyZPressed && !keyXPressed && !keyCPressed) {
             DrawWave(wave1, time);
         }
@@ -523,9 +527,6 @@ int main() {
         if (MousePressed) {
             DrawRect(-0.8f, -0.4f, 0.05f, 0.65f, 0.15f, 0.15f, 0.15f);
         }
-
-        // Проверка ввода и начисление очков
-        checkInput(wavePosition);
 
         // Отвязываем VAO
         glBindVertexArray(0);
