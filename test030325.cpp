@@ -1,15 +1,13 @@
-﻿#include <glad/glad.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cmath>
 #include <chrono> 
-#include <ft2build.h>
 #include <map>
 #include <glm/glm.hpp>
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <sndfile.h>
-#include FT_FREETYPE_H
 
 constexpr float M_PI = 3.14;
 
@@ -19,71 +17,6 @@ unsigned int width = 1000;
 // Шейдерная программа
 unsigned int shaderProgram;
 
-struct Character {
-    GLuint textureID;   // ID текстуры символа
-    glm::ivec2 size;    // Размер символа
-    glm::ivec2 bearing; // Смещение символа
-    GLuint advance;     // Расстояние до следующего символа
-};
-
-std::map<GLchar, Character> Characters; // Хранилище символов
-GLuint VAO, VBO;
-
-void loadFont(const std::string& fontPath, GLuint fontSize) {
-    FT_Library ft;
-    if (FT_Init_FreeType(&ft)) {
-        std::cerr << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
-        return;
-    }
-
-    FT_Face face;
-    if (FT_New_Face(ft, fontPath.c_str(), 0, &face)) {
-        std::cerr << "ERROR::FREETYPE: Failed to load font" << std::endl;
-        return;
-    }
-
-    FT_Set_Pixel_Sizes(face, 0, fontSize);
-
-    // Загрузка символов
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    for (GLubyte c = 0; c < 128; c++) {
-        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-            std::cerr << "ERROR::FREETYPE: Failed to load Glyph" << std::endl;
-            continue;
-        }
-
-        GLuint texture;
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RED,
-            face->glyph->bitmap.width,
-            face->glyph->bitmap.rows,
-            0,
-            GL_RED,
-            GL_UNSIGNED_BYTE,
-            face->glyph->bitmap.buffer
-        );
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        Character character = {
-            texture,
-            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            static_cast<GLuint>(face->glyph->advance.x)
-        };
-        Characters.insert(std::pair<GLchar, Character>(c, character));
-    }
-
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
-}
 
 #define checkOpenALError() checkOpenALError_(__FILE__, __LINE__)
 bool checkOpenALError_(const char* file, int line) {
@@ -107,19 +40,19 @@ enum GameState {
     GAME_WIN
 };
 
-//class Game
-//{
-//public:
-//    GameState    State;
-//    bool         Keys[3];
-//    unsigned int Width, Height;
-//    Game(unsigned int width, unsigned int height);
-//    ~Game();
-//    void Init();
-//    void ProcessInput(float dt);
-//    void Update(float dt);
-//    void Render();
-//};
+/*class Game
+{
+public:
+    GameState    State;
+    bool         Keys[3];
+    unsigned int Width, Height;
+    Game(unsigned int width, unsigned int height);
+    ~Game();
+    void Init();
+    void ProcessInput(float dt);
+    void Update(float dt);
+    void Render();
+};*/
 
 // Функция для рисования прямоугольника
 void DrawRect(float x1, float y1, float x2, float y2, float r, float g, float b) {
@@ -334,6 +267,7 @@ void DrawOscilloscope() {
     }
 }
 
+/*
 ALuint loadAudio(const std::string& filePath) {
     SF_INFO fileInfo;
     SNDFILE* file = sf_open(filePath.c_str(), SFM_READ, &fileInfo);
@@ -360,6 +294,7 @@ ALuint loadAudio(const std::string& filePath) {
 
     return buffer;
 }
+*/
 
 ALuint playAudio(ALuint buffer) {
     ALuint source;
@@ -375,47 +310,7 @@ ALuint playAudio(ALuint buffer) {
     return source;
 }
 
-void RenderText(GLuint shader, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color) {
-    glUseProgram(shader);
-    glUniform3f(glGetUniformLocation(shader, "textColor"), color.x, color.y, color.z);
-    glActiveTexture(GL_TEXTURE0);
 
-    // Проходим по всем символам строки
-    for (std::string::const_iterator c = text.begin(); c != text.end(); c++) {
-        Character ch = Characters[*c];
-
-        GLfloat xpos = x + ch.bearing.x * scale;
-        GLfloat ypos = y - (ch.size.y - ch.bearing.y) * scale;
-
-        GLfloat w = ch.size.x * scale;
-        GLfloat h = ch.size.y * scale;
-
-        // Обновляем VBO для каждого символа
-        GLfloat vertices[6][4] = {
-            {xpos, ypos + h, 0.0, 0.0},
-            {xpos, ypos, 0.0, 1.0},
-            {xpos + w, ypos, 1.0, 1.0},
-
-            {xpos, ypos + h, 0.0, 0.0},
-            {xpos + w, ypos, 1.0, 1.0},
-            {xpos + w, ypos + h, 1.0, 0.0}
-        };
-
-        // Отрисовываем текстуру символа
-        glBindTexture(GL_TEXTURE_2D, ch.textureID);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        // Сдвигаем позицию для следующего символа
-        x += (ch.advance >> 6) * scale; // Сдвиг в 1/64 пикселя
-    }
-
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
 
 bool keyZPressed = false;
 bool keyXPressed = false;
@@ -492,14 +387,6 @@ int main() {
         return -1;
     }
 
-    FT_Library ft;
-    if (FT_Init_FreeType(&ft)) {
-        std::cerr << "ERROR: Could not init FreeType Library" << std::endl;
-        return -1;
-    }
-    std::cout << "FreeType initialized successfully!" << std::endl;
-    FT_Done_FreeType(ft);
-
     // Загрузка шейдеров
     const char* vertexSource = R"(
         #version 330 core
@@ -541,12 +428,12 @@ int main() {
     }
 
     // Инициализация OpenAL
-    ALCdevice* device = alcOpenDevice(nullptr);
-    ALCcontext* context = alcCreateContext(device, nullptr);
-    alcMakeContextCurrent(context);
+   // ALCdevice* device = alcOpenDevice(nullptr);
+   // ALCcontext* context = alcCreateContext(device, nullptr);
+   // alcMakeContextCurrent(context);
 
     // Загрузка аудиофайла
-    ALuint buffer = loadAudio("path/to/your/music.wav");
+    /*ALuint buffer = loadAudio("path/to/your/music.wav");
     if (!buffer) {
         alcDestroyContext(context);
         alcCloseDevice(device);
@@ -563,6 +450,7 @@ int main() {
     }
 
     std::cout << "OpenAL initialized successfully!" << std::endl;
+    */
 
     // Компиляция шейдеров
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -579,7 +467,6 @@ int main() {
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
 
-    loadFont("C:/Windows/Fonts/Arial.ttf", 48);
 
     GLuint VAO, VBO;
     glGenVertexArrays(1, &VAO);
@@ -608,11 +495,12 @@ int main() {
 
         DrawOscilloscope();
 
-        ALint state;
+       /* ALint state;
         alGetSourcei(source, AL_SOURCE_STATE, &state);
         if (state != AL_PLAYING) {
             break; // Музыка закончилась
         }
+        */
 
         Wave base_wave = { 0.03f, 100.0f, 0.0f };
         if (!keyZPressed && !keyXPressed && !keyCPressed) {
@@ -647,7 +535,6 @@ int main() {
         if (MousePressed) {
             DrawRect(-0.8f, -0.4f, 0.05f, 0.65f, 0.15f, 0.15f, 0.15f);
         }
-        RenderText(shaderProgram, "Hello!", -0.5f, -0.5f, 10.0f, glm::vec3(1.0f, 1.0f, 1.0f));
 
         // Проверка ввода и начисление очков
         checkInput(wavePosition);
@@ -667,8 +554,8 @@ int main() {
     }
 
     // Освобождение ресурсов
-    alcDestroyContext(context);
-    alcCloseDevice(device);
+   // alcDestroyContext(context);
+   // alcCloseDevice(device);
     glDeleteProgram(shaderProgram);
     glfwDestroyWindow(window);
     glfwTerminate();
