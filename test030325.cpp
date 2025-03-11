@@ -28,7 +28,6 @@ public:
     }
 
     Wave addBeats(float time, const Wave& wave1, const Wave& wave2) {
-        float deltaOmega = wave1.frequency - wave2.frequency;
         float omega = (wave1.frequency + wave2.frequency);
         Wave wave_res((wave1.amplitude + wave2.amplitude) / 2.0f * cos(time), omega * cos(time) * 10.0f);
         return wave_res;
@@ -135,8 +134,8 @@ public:
 
         float wavePoints[numPoints * 2];
         for (int i = 0; i < numPoints; i++) {
-            float x = -0.8f + 1.45f * i / (numPoints - 1);
-            float y = cos(7.0f) * wave.amplitude * sin(10.0f * x);
+            float x = -0.8f + 0.85f * i / (numPoints - 1);
+            float y = pow(cos(x * 7.0f + time * 2.0f), 2) * wave.amplitude * cos(2.0f * wave.frequency * x + wave.frequency * time) + 0.12f;
             wavePoints[i * 2] = x;
             wavePoints[i * 2 + 1] = y;
         }
@@ -155,13 +154,6 @@ public:
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-
-        for (int i = 0; i < numPoints; i++) {
-            float x = -0.8f + 0.85f * i / (numPoints - 1);
-            float y = pow(cos(x * 7.0f + time * 2.0f), 2) * wave.amplitude * cos(2.0f * wave.frequency * x + wave.frequency * time) + 0.12f;
-            wavePoints[i * 2] = x;
-            wavePoints[i * 2 + 1] = y;
-        }
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(wavePoints), wavePoints);
@@ -298,7 +290,7 @@ public:
         while (isRunning && !glfwWindowShouldClose(window)) {
             auto currentTime = std::chrono::high_resolution_clock::now();
             float time = std::chrono::duration<float>(currentTime - start_time).count();
-            render();
+            render(time);
             update(time);
 
             glfwSwapBuffers(window);
@@ -400,7 +392,7 @@ private:
         }
     }
 
-    void render() {
+    void render(float time) {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -412,7 +404,7 @@ private:
 
         if (!MousePressed && sourceState != AL_PLAYING) {
             audioManager.playAudio(); // Запуск музыки, если осциллограф включен, а музыка не играет
-            startTime = glfwGetTime();
+            startTime = time;
         }
         if (MousePressed && sourceState == AL_PLAYING) {
             audioManager.stopAudio(); // Остановка музыки, если осциллограф выключен, а музыка играет
@@ -423,29 +415,29 @@ private:
         if (!MousePressed) {
             Wave base_wave = { 0.03f, 100.0f };
             if (!keyZPressed && !keyXPressed && !keyCPressed) {
-                renderer.DrawWave(base_wave, static_cast<float>(glfwGetTime()));
+                renderer.DrawWave(base_wave, time);
             }
             Wave wave1 = { 0.05f, 21.0f };
             Wave wave2 = { 0.25f, 42.0f };
             Wave wave3 = { 0.45f, 63.0f };
             if (keyZPressed && !keyXPressed && !keyCPressed) {
-                renderer.DrawWave(wave1, static_cast<float>(glfwGetTime()));
+                renderer.DrawWave(wave1, time);
             }
             if (keyXPressed && !keyZPressed && !keyCPressed) {
-                renderer.DrawWave(wave2, static_cast<float>(glfwGetTime()));
+                renderer.DrawWave(wave2, time);
             }
             if (keyCPressed && !keyZPressed && !keyXPressed) {
-                renderer.DrawWave(wave3, static_cast<float>(glfwGetTime()));
+                renderer.DrawWave(wave3, time);
             }
 
             else if (keyZPressed && keyXPressed) {
-                renderer.DrawWave(wave1.addBeats(glfwGetTime(), wave1, wave2), glfwGetTime());
+                renderer.DrawWave(wave1.addBeats(time, wave1, wave2), time);
             }
             else if (keyXPressed && keyCPressed) {
-                renderer.DrawWave(wave2.addBeats(glfwGetTime(), wave2, wave3), glfwGetTime());
+                renderer.DrawWave(wave2.addBeats(time, wave2, wave3), time);
             }
             else if (keyZPressed && keyCPressed) {
-                renderer.DrawWave(wave3.addBeats(glfwGetTime(), wave1, wave3), glfwGetTime());
+                renderer.DrawWave(wave3.addBeats(time, wave1, wave3), time);
             }
 
         }
