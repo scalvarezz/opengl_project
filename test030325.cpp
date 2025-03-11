@@ -1,12 +1,8 @@
-
+#include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
-#include <cmath>
 #include <chrono>
-#include <map>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp> 
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <sndfile.h>
@@ -128,6 +124,7 @@ public:
         glDeleteBuffers(1, &VBO);
         glDeleteBuffers(1, &EBO);
     }
+
     void DrawWave(const Wave& wave, float time) {
         const int numPoints = 50;
         glLineWidth(5.0f);
@@ -164,17 +161,18 @@ public:
         glDrawArrays(GL_LINE_STRIP, 0, numPoints);
         glBindVertexArray(0);
     }
+
     void DrawOscilloscope() const {
         DrawRect(-0.9f, -0.8f, 0.9f, 0.8f, 0.95f, 0.95f, 0.65f);
-        DrawRect(0.15f, -0.75f, 0.87f, 0.75f, 0.9f, 0.9f, 0.5f);
-        DrawRect(0.17f, -0.72f, 0.85f, 0.72f, 0.9f, 0.9f, 0.6f);
-        DrawRect(-0.87f, -0.5f, 0.12f, 0.75f, 0.9f, 0.9f, 0.46f);
-        DrawRect(-0.8f, -0.4f, 0.05f, 0.65f, 0.1f, 0.45f, 0.25f);
-        DrawRect(0.72f, 0.57f, 0.82f, 0.67f, 1.0f, 0.2f, 0.2f);
+        DrawRect(0.15f, -0.75f, 0.87f, 0.75f, 0.8f, 0.8f, 0.5f);
+        DrawRect(0.17f, -0.72f, 0.85f, 0.72f, 0.85f, 0.85f, 0.6f);
+        DrawRect(-0.87f, -0.5f, 0.12f, 0.75f, 0.75f, 0.75f, 0.45f);
+        DrawRect(-0.8f, -0.4f, 0.05f, 0.65f, 0.1f, 0.4f, 0.17f);
+        DrawRect(0.72f, 0.57f, 0.82f, 0.67f, 0.9f, 0.2f, 0.2f);
 
         for (int i = 0; i < 3; i++) {
             float xOffset = 0.22f * i;
-            DrawRect(0.2f + xOffset, -0.31f, 0.39f + xOffset, 0.05f, 1.0f, 1.0f, 0.56f);
+            DrawRect(0.2f + xOffset, -0.31f, 0.4f + xOffset, 0.05f, 0.9f, 0.9f, 0.56f);
             DrawCircle(0.295f + xOffset, -0.13f, 0.086f, 0.8f, 0.8f, 0.4f);
             DrawCircle(0.295f + xOffset, -0.53f, 0.05f, 0.7f, 0.7f, 0.5f);
             DrawCircle(0.295f + xOffset, -0.53f, 0.04f, 0.9f, 0.9f, 0.7f);
@@ -294,7 +292,7 @@ public:
             update(time);
 
             glfwSwapBuffers(window);
-            glfwPollEvents(); // Обработка событий
+            glfwPollEvents();
         }
     }
 private:
@@ -307,8 +305,12 @@ private:
     bool isOscilloscopeOn;
     float startTime;
     int i = 0;
-    float presstime[4] = { 3.0f,5.0f,7.0f,500.0f };
-    int pressbutton[3] = { 0,1,20 };
+    float presstime[50] = { 0.01f, 2.0f, 3.9f, 5.8f, 6.4f, 7.5f, 9.3f, 11.1f, 13.1f, 13.7f, 14.8f, 16.5f, 18.5f, 20.5f,
+        21.0f, 22.0f, 24.0f, 26.0f, 28.0f, 28.6f, 29.5f, 31.16f, 32.8f, 34.6f, 35.5f, 36.5f, 38.2f, 40.2f, 42.1f, 44.0f,
+        45.9f, 47.6f, 49.3f, 50.2f, 51.2f, 53.2f, 54.8f, 56.8f, 57.8f, 58.7f, 61.87f, 66.6f, 69.4f, 73.6f, 76.8f, 81.1f,
+        84.0f, 86.0f, 88.0f, 500.0f };
+    int pressbutton[49] = { 0, 1, 2, 0, 1, 0, 1, 2, 0, 1, 10, 20, 21, 10, 20, 10, 20, 21, 10, 20, 1, 0, 2, 1, 0, 1, 0, 1,
+        2, 2, 1, 0, 1, 0, 1, 0, 2, 2, 2, 20, 21, 20, 21, 20, 21, 20, 21, 21};
 
     void init() {
         if (!glfwInit()) {
@@ -377,7 +379,7 @@ private:
 
     void update(float time) {
         if (startTime > 0.0f) {
-            if (i < 3 && time - startTime >= presstime[i] && time - startTime <= presstime[i] + 0.5f) {
+            if (i < 50 && time - startTime >= presstime[i] && time - startTime <= presstime[i] + 0.5f) {
                 if (pressbutton[i] > 9) {
                     renderer.DrawRect(-0.67f + 0.22f * (pressbutton[i] / 10), -0.75f, -0.52f + 0.22f * (pressbutton[i] / 10), -0.55f, 1.0f, 0.0f, 0.0f);
                     renderer.DrawRect(-0.67f + 0.22f * (pressbutton[i] % 10), -0.75f, -0.52f + 0.22f * (pressbutton[i] % 10), -0.55f, 1.0f, 0.0f, 0.0f);
@@ -404,6 +406,7 @@ private:
 
         if (!MousePressed && sourceState != AL_PLAYING) {
             audioManager.playAudio(); // Запуск музыки, если осциллограф включен, а музыка не играет
+            audioManager.setVolume(0.1f);
             startTime = time;
         }
         if (MousePressed && sourceState == AL_PLAYING) {
@@ -447,8 +450,6 @@ private:
     }
 };
 
-
-// Точка входа
 int main() {
     Game game(1000, 800);
     game.run();
